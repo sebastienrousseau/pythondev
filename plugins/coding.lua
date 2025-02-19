@@ -1,18 +1,26 @@
 -- coding.lua
--- Enhanced Python development configuration with support for:
--- 1. Multiple LSPs (Pyright, Ruff, etc.)
--- 2. Testing frameworks (Pytest)
--- 3. Debugging capabilities
--- 4. Code quality tools
--- 5. Documentation support
+-- A Neovim configuration aligned with requirements.txt for Python in 2025:
+--
+-- 1) LSP: pylsp for language features, ruff-lsp for linting
+-- 2) Mypy for type checking
+-- 3) Codespell for spell checking
+-- 4) Debugging with debugpy
+-- 5) Testing (pytest) via neotest
+-- 6) pip-audit for security checks
+-- 7) mdformat for documentation formatting
+-- 8) venv-selector for environment management
+
 return {
     -----------------------------------------------------------------------------
     -- Autocompletion with nvim-cmp
     -----------------------------------------------------------------------------
     {
         "hrsh7th/nvim-cmp",
+        -- If using LazyVim, this plugin is often included by default.
+        -- We override the config to add extra keybindings.
         opts = function(_, opts)
             local cmp = require("cmp")
+            -- Example: cycle suggestions with <C-j>/<C-k>:
             opts.mapping = vim.tbl_deep_extend("force", opts.mapping, {
                 ["<C-j>"] = cmp.mapping.select_next_item({
                     behavior = cmp.SelectBehavior.Insert
@@ -32,56 +40,77 @@ return {
         opts = function(_, opts)
             if type(opts.ensure_installed) == "table" then
                 vim.list_extend(opts.ensure_installed, {
-                    "python", "toml", "yaml", "json", "markdown", "bash",
-                    "regex", "vim"
+                    "python", "markdown", "json", "toml", "yaml", "bash", "vim",
+                    "regex"
                 })
             end
         end
     },
 
     -----------------------------------------------------------------------------
-    -- LSP Configuration
+    -- Global on_attach for LSP
+    -----------------------------------------------------------------------------
+    {
+        "neovim/nvim-lspconfig",
+        lazy = true, -- Let other plugins load it
+        config = function()
+            local on_attach = function(client, bufnr)
+                -- We disable LSP formatting to avoid conflicts with null-ls or ruff
+                client.server_capabilities.documentFormattingProvider = false
+
+                local bufmap = function(mode, lhs, rhs, desc)
+                    if desc then desc = "[LSP] " .. desc end
+                    vim.keymap
+                        .set(mode, lhs, rhs, {buffer = bufnr, desc = desc})
+                end
+
+                -- Common LSP Keymaps
+                bufmap("n", "<leader>rn", vim.lsp.buf.rename, "Rename Symbol")
+                bufmap("n", "<leader>ca", vim.lsp.buf.code_action, "Code Action")
+                bufmap("n", "gd", vim.lsp.buf.definition, "Go to Definition")
+                bufmap("n", "gr", vim.lsp.buf.references, "Go to References")
+                bufmap("n", "K", vim.lsp.buf.hover, "Hover Documentation")
+                bufmap("n", "<leader>e", vim.diagnostic.open_float,
+                       "Show Diagnostics")
+            end
+
+            _G.lsp_on_attach = on_attach
+        end
+    },
+
+    -----------------------------------------------------------------------------
+    -- LSP: pylsp (for completions/definition/etc) + ruff-lsp (linting/auto-fixes)
     -----------------------------------------------------------------------------
     {
         "neovim/nvim-lspconfig",
         dependencies = {
-            "williamboman/mason.nvim", "folke/neodev.nvim" -- Better Lua development
+            "williamboman/mason.nvim", "williamboman/mason-lspconfig.nvim"
         },
+        event = {"BufReadPre", "BufNewFile"},
         config = function()
             local lspconfig = require("lspconfig")
+            local on_attach = _G.lsp_on_attach
 
-            -- Pyright configuration
-            lspconfig.pyright.setup({
-                settings = {
-                    python = {
-                        analysis = {
-                            typeCheckingMode = "basic",
-                            autoSearchPaths = true,
-                            useLibraryCodeForTypes = true,
-                            diagnosticMode = "workspace",
-                            inlayHints = {
-                                variableTypes = true,
-                                functionReturnTypes = true
-                            },
-                            -- Add these settings
-                            diagnosticSeverityOverrides = {
-                                reportGeneralTypeIssues = "warning",
-                                reportOptionalMemberAccess = "warning",
-                                reportOptionalSubscript = "warning",
-                                reportPrivateImportUsage = "warning"
+            -- "ruff_lsp" for fast linting and formatting
+            lspconfig.ruff_lsp.setup({
+                on_attach = on_attach,
+                init_options = {
+                    settings = {
+                        -- Ruff configuration
+                        args = {
+                            "--line-length=88",  -- Default black line length
+                            "--select=E,F,W,I,N,UP,B,A,C4,DTZ,T20,RET,SIM,PL"
+                        },
+                        -- Enable autofix on save
+                        codeAction = {
+                            enable = true,
+                            applyOnSave = {
+                                enable = true,
+                                types = {"organizeImports", "fixAll"}
                             }
                         }
                     }
                 }
-            })
-
-            -- Ruff LSP configuration
-            lspconfig.ruff_lsp.setup({
-                on_attach = function(client, bufnr)
-                    -- Disable formatting if you want to use black instead
-                    client.server_capabilities.documentFormattingProvider =
-                        false
-                end
             })
         end
     },
@@ -93,34 +122,57 @@ return {
         "williamboman/mason.nvim",
         opts = {
             ensure_installed = {
-                -- LSP
-                "pyright", "ruff-lsp", "mypy", -- Formatters
-                "black", "isort", -- Linters
-                "pylint", "bandit", -- Debug Adapter
-                "debugpy", -- Documentation
-                "mdformat", -- Security
-                "pip-audit"
+                -- LSP servers
+                "pylsp",
+                "ruff-lsp",
+                -- Tools
+                "mypy",
+                "codespell",
+                "debugpy",
+                "pip-audit",
+                "mdformat",
+                "mdformat-black",
+                "poetry",        -- Now included
+                "pre-commit"     -- Now included
             }
+        }
+    },
+    {
+        "williamboman/mason-lspconfig.nvim",
+        opts = {
+            ensure_installed = {"pylsp", "ruff-lsp"},
+            automatic_installation = true
         }
     },
 
     -----------------------------------------------------------------------------
-    -- Debugging Support
+    -- Debugging Support: nvim-dap + debugpy
     -----------------------------------------------------------------------------
     {
         "mfussenegger/nvim-dap",
-        dependencies = {"rcarriga/nvim-dap-ui", "mfussenegger/nvim-dap-python"},
+        dependencies = {
+            -- Order matters: nvim-nio must load before nvim-dap-ui
+            "nvim-neotest/nvim-nio",
+            "rcarriga/nvim-dap-ui",
+            "mfussenegger/nvim-dap-python"
+        },
         config = function()
             local dap = require("dap")
             local dapui = require("dapui")
-            require("dap-python").setup("python")
+            local dap_python = require("dap-python")
 
-            -- Configure debugging UI
+            -- Use the currently active python
+            dap_python.setup(vim.fn.exepath("python"))
+            dap_python.test_runner = "pytest"
+
             dapui.setup({
                 layouts = {
                     {
                         elements = {
-                            "scopes", "breakpoints", "stacks", "watches"
+                            "scopes",
+                            "breakpoints",
+                            "stacks",
+                            "watches"
                         },
                         size = 40,
                         position = "left"
@@ -133,132 +185,178 @@ return {
                 }
             })
 
-            -- Debugging keymaps
-            vim.keymap.set("n", "<F5>", dap.continue)
-            vim.keymap.set("n", "<F10>", dap.step_over)
-            vim.keymap.set("n", "<F11>", dap.step_into)
-            vim.keymap.set("n", "<F12>", dap.step_out)
-            vim.keymap.set("n", "<leader>b", dap.toggle_breakpoint)
+            -- Debugging Keymaps
+            vim.keymap.set("n", "<F5>", dap.continue, {desc = "[DAP] Continue"})
+            vim.keymap.set("n", "<F10>", dap.step_over,
+                           {desc = "[DAP] Step Over"})
+            vim.keymap.set("n", "<F11>", dap.step_into,
+                           {desc = "[DAP] Step Into"})
+            vim.keymap
+                .set("n", "<F12>", dap.step_out, {desc = "[DAP] Step Out"})
+            vim.keymap.set("n", "<leader>b", dap.toggle_breakpoint,
+                           {desc = "[DAP] Toggle Breakpoint"})
         end
     },
 
     -----------------------------------------------------------------------------
-    -- Testing Support
+    -- Formatting Configuration with conform.nvim
+    -----------------------------------------------------------------------------
+    {
+        "stevearc/conform.nvim",
+        opts = {
+            formatters_by_ft = {
+                python = {"ruff"}, -- Using ruff for Python formatting
+                markdown = {"mdformat"}
+            },
+            -- Format on save
+            format_on_save = {
+                timeout_ms = 1000,
+                lsp_fallback = true
+            },
+            -- Customize formatters
+            formatters = {
+                mdformat = {
+                    args = {"--number"}
+                },
+                ruff = {
+                    args = {"--line-length=88"}
+                }
+            }
+        }
+    },
+
+    -----------------------------------------------------------------------------
+    -- Virtual Environment Selector
+    -----------------------------------------------------------------------------
+    {
+        "linux-cultist/venv-selector.nvim",
+        dependencies = {"nvim-telescope/telescope.nvim"},
+        opts = {
+            auto_refresh = true,
+            poetry_path = vim.fn.exepath("poetry")  -- Added poetry path
+        },
+        config = function()
+            require("venv-selector").setup()
+        end
+    },
+
+    -----------------------------------------------------------------------------
+    -- Testing with Neotest + Pytest
     -----------------------------------------------------------------------------
     {
         "nvim-neotest/neotest",
         dependencies = {
-            "nvim-neotest/nvim-nio", -- Add this required dependency
-            "nvim-lua/plenary.nvim", "antoinemadec/FixCursorHold.nvim",
-            "nvim-treesitter/nvim-treesitter", "nvim-neotest/neotest-python"
+            "nvim-neotest/nvim-nio",
+            "nvim-neotest/neotest-python",
+            "nvim-lua/plenary.nvim",
+            "antoinemadec/FixCursorHold.nvim",
+            "nvim-treesitter/nvim-treesitter"
         },
         config = function()
-            require("neotest").setup({
+            local neotest = require("neotest")
+            neotest.setup({
                 adapters = {
                     require("neotest-python")({
                         dap = {justMyCode = false},
                         runner = "pytest",
-                        args = {"--cov", "--cov-report=term-missing"}
+                        -- Coverage and async support
+                        args = {
+                            "--cov",
+                            "--cov-report=term-missing",
+                            "-v",
+                            "--asyncio-mode=auto"
+                        }
                     })
                 }
             })
+
+            -- Keymaps for Neotest
+            vim.keymap.set("n", "<leader>tt", neotest.run.run,
+                           {desc = "[Test] Run nearest test"})
+            vim.keymap.set("n", "<leader>tf",
+                           function()
+                neotest.run.run(vim.fn.expand("%"))
+            end, {desc = "[Test] Run test file"})
+            vim.keymap.set("n", "<leader>ts", neotest.summary.toggle,
+                           {desc = "[Test] Toggle summary"})
         end
     },
 
     -----------------------------------------------------------------------------
-    -- Code Navigation and Search
+    -- Code Navigation (Telescope)
     -----------------------------------------------------------------------------
     {
         "nvim-telescope/telescope.nvim",
         dependencies = {"nvim-telescope/telescope-fzf-native.nvim"},
         config = function()
-            require("telescope").setup({
-                extensions = {
-                    fzf = {
-                        fuzzy = true,
-                        override_generic_sorter = true,
-                        override_file_sorter = true,
-                        case_mode = "smart_case"
-                    }
-                }
-            })
+            require("telescope").setup({})
+            require("telescope").load_extension("fzf")
         end
     },
 
     -----------------------------------------------------------------------------
-    -- Additional Tools
-    -----------------------------------------------------------------------------
-    {
-        "folke/todo-comments.nvim",
-        dependencies = "nvim-lua/plenary.nvim",
-        config = function() require("todo-comments").setup({}) end
-    },
-    -----------------------------------------------------------------------------
-    -- Python Formatting
-    -----------------------------------------------------------------------------
-    {
-        "stevearc/conform.nvim",
-        opts = {
-            formatters_by_ft = {python = {"black", "isort"}},
-            format_on_save = {timeout_ms = 500, lsp_fallback = true}
-        }
-    },
-
-    -----------------------------------------------------------------------------
-    -- Python Docstring Support
+    -- Python Docstring Support (Neogen)
     -----------------------------------------------------------------------------
     {
         "danymat/neogen",
-        dependencies = "nvim-treesitter/nvim-treesitter",
+        dependencies = {"nvim-treesitter/nvim-treesitter"},
         config = function()
             require("neogen").setup({
                 enabled = true,
                 languages = {
                     python = {
-                        template = {annotation_convention = "google_docstrings"}
+                        template = {
+                            annotation_convention = "google_docstrings"
+                        }
                     }
                 }
             })
-            -- Keymaps for generating documentation
-            vim.keymap.set("n", "<Leader>nd",
-                           ":lua require('neogen').generate()<CR>")
+            vim.keymap.set("n", "<Leader>nd", ":Neogen<CR>",
+                           {desc = "[Docs] Generate Docstring"})
         end
     },
 
     -----------------------------------------------------------------------------
-    -- Better Python Indentation
-    -----------------------------------------------------------------------------
-    {"Vimjas/vim-python-pep8-indent", ft = "python"},
-
-    -----------------------------------------------------------------------------
-    -- Python-specific Snippets
+    -- Linting Configuration with nvim-lint
     -----------------------------------------------------------------------------
     {
-        "L3MON4D3/LuaSnip",
+        "mfussenegger/nvim-lint",
+        event = {"BufReadPre", "BufNewFile"},
         config = function()
-            require("luasnip.loaders.from_vscode").lazy_load()
-            require("luasnip").filetype_extend("python", {"python"})
+            local lint = require("lint")
+            lint.linters_by_ft = {
+                python = {"mypy", "codespell"},
+                markdown = {"codespell"},
+                text = {"codespell"}
+            }
+            
+            -- Configure mypy
+            lint.linters.mypy.args = {
+                "--ignore-missing-imports",
+                "--check-untyped-defs"
+            }
+
+            -- Run linting automatically on save
+            vim.api.nvim_create_autocmd({"BufWritePost"}, {
+                callback = function()
+                    lint.try_lint()
+                end,
+            })
         end
     },
 
     -----------------------------------------------------------------------------
-    -- Better Python REPL Integration
+    -- Enhanced Python Syntax & Indentation
     -----------------------------------------------------------------------------
     {
-        "jpalardy/vim-slime",
-        ft = "python",
-        config = function()
-            vim.g.slime_target = "neovim"
-            vim.g.slime_python_ipython = 1
-        end
+        "Vimjas/vim-python-pep8-indent",
+        ft = "python"
     },
-
-    -----------------------------------------------------------------------------
-    -- Enhanced Python Syntax
-    -----------------------------------------------------------------------------
     {
         "vim-python/python-syntax",
         ft = "python",
-        config = function() vim.g.python_highlight_all = 1 end
+        config = function()
+            vim.g.python_highlight_all = 1
+        end
     }
 }

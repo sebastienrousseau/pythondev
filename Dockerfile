@@ -73,7 +73,7 @@ RUN apk update --no-cache && apk upgrade --no-cache && \
     curl \
     gcc \
     git \
-    jq \ 
+    jq \
     libffi-dev \
     make \
     neovim \
@@ -127,6 +127,13 @@ RUN cd /tmp && \
     echo "Verifying Python installation..." && \
     ls -la /opt/venv/bin/ && \
     /opt/venv/bin/python3.12 --version
+
+###############################################################################
+# Install Node.js, npm, and Python LSP servers
+###############################################################################
+RUN apk add --no-cache nodejs npm && \
+    npm install -g pyright && \
+    pyright --version
 
 ###############################################################################
 # Create & configure virtual environment

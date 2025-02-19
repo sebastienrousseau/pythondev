@@ -51,8 +51,151 @@ alias e='color_out "📝" "Opening editor..." && nvim'
 alias p='color_out "⚙️" "Process list:" && ps aux'
 alias q='color_out "👋" "Exiting shell..." && exit'
 alias r='color_out "🔄" "Reloading configuration..." && source ~/.bashrc && source ~/.bash_aliases && color_out "✅" "Configuration reloaded"'
+t() {
+    color_out "📝" "Create an empty file $1"
+    touch "$1"
+}
 alias v='color_out "📝" "Opening editor..." && nvim'
 alias x='color_out "👋" "Exiting shell..." && exit'
+
+##############################
+# Git Commands (prefix: g)
+##############################
+##############################
+# Git Commands (prefix: g)
+##############################
+if command -v git >/dev/null 2>&1; then
+    alias g='git'
+    alias ga='color_out "📦" "Staging changes..." && git add --all && color_out "✅" "Changes staged"'
+    alias gi='color_out "📦" "Initializing repository..." && git init && color_out "✅" "Repository initialized"'
+    # Rename pull alias from "gpl" to "gq" as per help menu:
+    alias gq='color_out "⬇️" "Pulling changes..." && git pull && color_out "✅" "Changes pulled"'
+    # Rename status alias to "gs":
+    alias gs='color_out "📊" "Repository status:" && git status'
+    alias gp='color_out "⬆️" "Pushing changes..." && git push && color_out "✅" "Changes pushed"'
+    alias gg='color_out "📊" "Git log graph:" && git log --oneline --graph --decorate --all --color'
+
+    # Git functions—rename to match help menu:
+    gc() {
+        if [[ -z "$1" ]]; then
+            color_out "❌" "Please provide a commit message" "$RED"
+            return 1
+        fi
+        color_out "💾" "Committing changes..." "$YELLOW"
+        if git commit -m "$*"; then
+            color_out "✅" "Committed: $*" "$GREEN"
+        else
+            color_out "❌" "Commit failed" "$RED"
+            return 1
+        fi
+    }
+    # "gb": Create & checkout branch (was gcb)
+    gb() {
+        if [[ -z "$1" ]]; then
+            color_out "❌" "Please provide a branch name" "$RED"
+            return 1
+        fi
+        color_out "🌱" "Creating branch: $1" "$YELLOW"
+        if git checkout -b "$1"; then
+            color_out "✅" "Created and switched to: $1" "$GREEN"
+        else
+            color_out "❌" "Branch creation failed" "$RED"
+            return 1
+        fi
+    }
+    # "gk": Checkout branch (was gco)
+    gk() {
+        if [[ -z "$1" ]]; then
+            color_out "❌" "Please specify a branch" "$RED"
+            return 1
+        fi
+        color_out "🔄" "Switching to: $1" "$YELLOW"
+        if git checkout "$1"; then
+            color_out "✅" "Switched to: $1" "$GREEN"
+        else
+            color_out "❌" "Switch failed" "$RED"
+            return 1
+        fi
+    }
+    # "gd": Delete branch locally (was gbd)
+    gd() {
+        if [[ -z "$1" ]]; then
+            color_out "❌" "Please specify a branch to delete" "$RED"
+            return 1
+        fi
+        color_out "🗑️" "Deleting branch: $1" "$YELLOW"
+        if git branch -d "$1"; then
+            color_out "✅" "Deleted: $1" "$GREEN"
+        else
+            color_out "❌" "Deletion failed" "$RED"
+            return 1
+        fi
+    }
+    # "ge": Delete remote branch (was gbrd)
+    ge() {
+        if [[ -z "$1" ]]; then
+            color_out "❌" "Please specify a remote branch to remove" "$RED"
+            return 1
+        fi
+        color_out "🗑️" "Removing remote branch: $1" "$YELLOW"
+        if git push origin --delete "$1"; then
+            color_out "✅" "Removed remote: $1" "$GREEN"
+        else
+            color_out "❌" "Remote deletion failed" "$RED"
+            return 1
+        fi
+    }
+    # "gm": Merge main/master (was gcf)
+    gm() {
+        color_out "🔄" "Merging $(git symbolic-ref --short HEAD) with remote main/master..." "$YELLOW"
+        if git checkout "$(git rev-parse --abbrev-ref HEAD)" && git pull && git merge origin/$(git rev-parse --abbrev-ref HEAD); then
+            color_out "✅" "Merge complete" "$GREEN"
+        else
+            color_out "❌" "Merge failed" "$RED"
+            return 1
+        fi
+    }
+    # "gr": Rebase branch (was gcm)
+    gr() {
+        if [[ -z "$1" ]]; then
+            color_out "❌" "Please specify a branch to rebase onto" "$RED"
+            return 1
+        fi
+        color_out "🔄" "Rebasing on $1..." "$YELLOW"
+        if git rebase "$1"; then
+            color_out "✅" "Rebased on $1" "$GREEN"
+        else
+            color_out "❌" "Rebase failed" "$RED"
+            return 1
+        fi
+    }
+
+    # Additional Git functions (not in help menu but available)
+    gpr() {
+        local BRANCH
+        BRANCH=$(git rev-parse --abbrev-ref HEAD)
+        color_out "🔄" "Syncing ${BRANCH}..." "$YELLOW"
+        if git pull --rebase origin "${BRANCH}" && git push; then
+            color_out "✅" "Synced ${BRANCH}" "$GREEN"
+        else
+            color_out "❌" "Sync failed" "$RED"
+            return 1
+        fi
+    }
+    gpo() {
+        if [[ -z "$1" ]]; then
+            color_out "❌" "Please specify a branch for push" "$RED"
+            return 1
+        fi
+        color_out "⬆️" "Pushing to $1..." "$YELLOW"
+        if git push origin "$1"; then
+            color_out "✅" "Pushed to $1" "$GREEN"
+        else
+            color_out "❌" "Push failed" "$RED"
+            return 1
+        fi
+    }
+fi
 
 ##############################
 # Python Commands (prefix: py)

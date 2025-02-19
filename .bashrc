@@ -193,8 +193,28 @@ show_help_menu() {
         "p" "List processes" \
         "q" "Exit shell" \
         "r" "Reload configuration" \
+        "t" "Create file" \
         "v" "Open editor" \
         "x" "Exit shell"
+
+    prompt_next || { system_info; return; }
+
+    print_help_section "Git Commands 🌿" \
+        "g" "Git" \
+        "ga" "Stage all changes" \
+        "gb" "Create & checkout branch" \
+        "gc" "Commit changes" \
+        "gd" "Delete branch locally" \
+        "ge" "Delete remote branch" \
+        "gg" "Display log graph" \
+        "gi" "Initialize repository" \
+        "gk" "Checkout branch" \
+        "gl" "Clone repository" \
+        "gm" "Merge main/master" \
+        "gp" "Push changes" \
+        "gq" "Pull changes" \
+        "gr" "Rebase branch" \
+        "gs" "Git status"
 
     prompt_next || { system_info; return; }
 
