@@ -1,0 +1,24 @@
+# Core Development Tools
+ruff               # Fast linter + formatter (replaces black/pylint/isort)
+mypy               # Keep one type checker (more established than pyright)
+codespell          # Spell checking
+
+# Testing
+pytest             # Core testing
+pytest-cov         # Code coverage
+pytest-mock        # Essential mocking
+pytest-asyncio     # Async testing support
+coverage           # Coverage reporting
+
+# Documentation
+mdformat
+mdformat-black
+
+# Security
+pip-audit          # Comprehensive security checking
+
+# Essential Tools
+poetry             # Modern dependency management
+pre-commit         # Git hooks
+debugpy            # Debugging support
+rich               # Console output enhancements
