@@ -91,6 +91,8 @@ return {
             local lspconfig = require("lspconfig")
             local on_attach = _G.lsp_on_attach
 
+            
+
             -- "ruff_lsp" for fast linting and formatting
             lspconfig.ruff_lsp.setup({
                 on_attach = on_attach,
@@ -217,9 +219,6 @@ return {
             formatters = {
                 mdformat = {
                     args = {"--number"}
-                },
-                ruff = {
-                    args = {"--line-length=88"}
                 }
             }
         }

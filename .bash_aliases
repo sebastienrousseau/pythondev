@@ -264,6 +264,14 @@ pyr() {
     python "$1"
 }
 
+# Python aliases
+alias python="python3.13"
+alias python3="python3.13"
+
+# Pip aliases
+alias pip="pip3.13"
+alias pip3="pip3.13"
+
 # Upgrade all installed Python packages
 alias pyu='color_out "🔄" "Upgrading installed Python packages..." && pip list --outdated | cut -d" " -f1 | xargs -n1 pip install -U && color_out "✅" "All packages upgraded"'
 

@@ -18,10 +18,6 @@
 # shellcheck disable=SC1090
 [[ -f ~/.bash_aliases ]] && source ~/.bash_aliases
 
-# Python aliases
-alias python="python3.12"
-alias python3="python3.12"
-
 # -----------------------------------------------------------------------------
 # Basic Shell Settings
 # -----------------------------------------------------------------------------

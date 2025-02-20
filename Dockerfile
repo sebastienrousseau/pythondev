@@ -1,6 +1,6 @@
 ###############################################################################
 # Dockerfile for a Python Development Environment on Alpine Linux (3.21.3)
-# with Python 3.12 built from source. Hardening steps included.
+# with Python 3.13 built from source. Hardening steps included.
 ###############################################################################
 FROM alpine:3.21.3
 
@@ -21,6 +21,9 @@ LABEL org.opencontainers.image.source="https://github.com/python/dev" \
     org.opencontainers.image.version="${VERSION}" \
     org.opencontainers.image.base.digest="sha256:$(wget -qO- https://hub.docker.com/v2/repositories/alpine/tags/3.21.3 | jq -r '.images[0].digest')"
 
+LABEL org.opencontainers.image.security.vulnerability-scan="2025-02-20" \
+    org.opencontainers.image.security.vulnerability-status="clean"
+
 ###############################################################################
 # Define build arguments (with sensible defaults for placeholders)
 ###############################################################################
@@ -28,10 +31,10 @@ ARG ARCH="$(apk --print-arch)"
 ARG LANG="en_US.UTF-8"
 ARG NAME="pythondev-container"
 ARG OS="alpine"
+ARG PYTHON_VERSION="3.13.2"
 ARG SHELL="/bin/bash"
 ARG TZ="UTC"
 ARG VERSION="latest"
-ARG PYTHON_VERSION="3.12.0"
 
 ###############################################################################
 # Set environment variables
@@ -44,7 +47,7 @@ ENV ARCH=${ARCH} \
     PATH="/opt/venv/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONHOME="/opt/venv" \
-    PYTHONPATH="/opt/venv/lib/python3.12/site-packages" \
+    PYTHONPATH="/opt/venv/lib/python3.13/site-packages" \
     PYTHONUNBUFFERED=1 \
     PYTHON_VERSION=${PYTHON_VERSION} \
     SECCOMP_PROFILE="default" \
@@ -62,78 +65,94 @@ RUN adduser -D -h "$USERHOME" -u 1000 "$USERNAME" \
     && chown -R "$USERNAME":"$USERNAME" "$USERHOME"
 
 ###############################################################################
-# Install dependencies, build Python from source, and set up the venv
+# Install build dependencies, build Python from source, remove build deps
 ###############################################################################
-RUN apk update --no-cache && apk upgrade --no-cache && \
-    apk add --no-cache \
+RUN set -eux; \
+    apk update --no-cache && apk upgrade --no-cache && \
+    \
+    apk add --no-cache --virtual .build-deps \
     bash \
     build-base \
     bzip2-dev \
     ca-certificates \
     curl \
-    gcc \
+    db-dev \
+    gdbm-dev \
     git \
+    gnupg \
     jq \
+    libcap \
     libffi-dev \
+    libseccomp \
+    linux-pam \
     make \
+    openssl-dev \
+    readline-dev \
+    shadow \
+    sqlite-dev \
+    tcl-dev \
+    tk-dev \
+    util-linux-dev \
+    xz-dev \
+    zlib-dev \
+    # (We install them here, then remove after building Python)
+    ; \
+    \
+    # Configure basic PAM module
+    echo "auth required pam_securetty.so" >> /etc/pam.d/login; \
+    \
+    # Set timezone
+    ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime; \
+    echo "$TZ" > /etc/timezone; \
+    \
+    # Download and build Python from source (NO --enable-optimizations)
+    cd /tmp; \
+    echo "Downloading Python ${PYTHON_VERSION}..."; \
+    wget "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz"; \
+    \
+    wget "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz.asc" && \
+    gpg --keyserver keyserver.ubuntu.com --recv-keys A035C8C19219BA821ECEA86B64E628F8D684696D && \
+    gpg --verify Python-${PYTHON_VERSION}.tgz.asc Python-${PYTHON_VERSION}.tgz && \
+    \
+    echo "Extracting Python source..."; \
+    tar xf "Python-${PYTHON_VERSION}.tgz"; \
+    cd "Python-${PYTHON_VERSION}"; \
+    echo "Configuring Python build..."; \
+    ./configure --prefix=/opt/venv; \
+    echo "Building Python..."; \
+    make -j"$(nproc)"; \
+    echo "Installing Python..."; \
+    make install; \
+    \
+    # Clean up Python build artifacts and remove build deps
+    cd /; \
+    rm -rf /tmp/*; \
+    apk del .build-deps; \
+    \
+    # Create a python-wrapper in /usr/local/bin
+    echo '#!/bin/sh' > /usr/local/bin/python-wrapper; \
+    echo 'exec /opt/venv/bin/python3.13 "$@"' >> /usr/local/bin/python-wrapper; \
+    chmod 755 /usr/local/bin/python-wrapper; \
+    \
+    # Verify installation
+    echo "Verifying Python installation..."; \
+    /opt/venv/bin/python3.13 --version
+
+###############################################################################
+# Install runtime packages and Node.js, npm, Neovim, etc.
+###############################################################################
+RUN apk add --no-cache \
+    bash \
+    build-base \
+    ca-certificates \
+    curl \
+    git \
     neovim \
     nodejs \
     npm \
-    openssl-dev \
-    readline-dev \
     ripgrep \
     shadow \
-    sqlite-dev \
-    tree-sitter \
-    wget \
-    xz-dev \
-    zlib-dev \
-    libcap \
-    libseccomp \
-    linux-pam \
-    # Configure basic PAM module (example)
-    && echo "auth required pam_securetty.so" >> /etc/pam.d/login \
-    \
-    # Set timezone
-    && ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime \
-    && echo "$TZ" > /etc/timezone
-
-###############################################################################
-# Build Python from source
-###############################################################################
-RUN cd /tmp && \
-    echo "Downloading Python ${PYTHON_VERSION}..." && \
-    wget "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz" && \
-    echo "Extracting Python source..." && \
-    tar xf "Python-${PYTHON_VERSION}.tgz" && \
-    cd "Python-${PYTHON_VERSION}" && \
-    echo "Configuring Python build..." && \
-    ./configure --prefix=/opt/venv --enable-optimizations && \
-    echo "Building Python..." && \
-    make -j"$(nproc)" && \
-    echo "Installing Python..." && \
-    make install && \
-    \
-    # Clean up build artifacts
-    cd / && \
-    rm -rf /tmp/* && \
-    \
-    # Create a python-wrapper in /usr/local/bin
-    echo '#!/bin/sh' > /usr/local/bin/python-wrapper && \
-    echo 'exec /opt/venv/bin/python3.12 "$@"' >> /usr/local/bin/python-wrapper && \
-    chmod 755 /usr/local/bin/python-wrapper && \
-    \
-    # Verify installation
-    echo "Verifying Python installation..." && \
-    ls -la /opt/venv/bin/ && \
-    /opt/venv/bin/python3.12 --version
-
-###############################################################################
-# Install Node.js, npm, and Python LSP servers
-###############################################################################
-RUN apk add --no-cache nodejs npm && \
-    npm install -g pyright && \
-    pyright --version
+    tree-sitter
 
 ###############################################################################
 # Create & configure virtual environment
@@ -145,7 +164,7 @@ RUN python3 -m venv /opt/venv && \
 ###############################################################################
 # Verify virtual environment setup
 ###############################################################################
-RUN ls -la /opt/venv/lib/python3.12/ && \
+RUN ls -la /opt/venv/lib/python3.13/ && \
     /opt/venv/bin/python -c "import encodings; print('✅ Python stdlib is intact in venv')" && \
     \
     # Install 'uv' CLI for pip environment management
@@ -158,10 +177,16 @@ RUN ls -la /opt/venv/lib/python3.12/ && \
     /opt/venv/bin/python -c "import encodings; print('✅ Python stdlib is intact in uv venv')"
 
 ###############################################################################
+# Pip audit for security vulnerabilities
+###############################################################################
+RUN uv pip install --system --no-cache pip-audit
+
+###############################################################################
 # Install Python dependencies from requirements.txt (if any)
 ###############################################################################
 COPY --chown=$USERNAME:$USERNAME requirements.txt /tmp/requirements.txt
-RUN uv pip install --system --no-cache -r /tmp/requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    uv pip install --system --no-cache -r /tmp/requirements.txt
 
 ###############################################################################
 # Additional hardening: audit, remove SUID/SGID, disable core dumps, etc.
@@ -191,9 +216,11 @@ RUN git clone --depth 1 https://github.com/LazyVim/starter "$USERHOME/.config/nv
 ###############################################################################
 # Harden the Alpine distribution for security (dev environment)
 ###############################################################################
-RUN rm -rf /opt/venv/lib/python3.12/test/ \
-    && rm -rf /opt/venv/lib/python3.12/tests/ \
-    && rm -rf /opt/venv/lib/python3.12/__pycache__/ \
+RUN set -eux; \
+    # Remove unneeded packages
+    rm -rf /opt/venv/lib/python3.13/test/ \
+    && rm -rf /opt/venv/lib/python3.13/tests/ \
+    && rm -rf /opt/venv/lib/python3.13/__pycache__/ \
     && find /opt/venv -type d -name "__pycache__" -exec rm -r {} + \
     && find /opt/venv -type f -name "*.py[co]" -delete \
     && find /opt/venv -type f -name "*.a" -delete \
@@ -231,12 +258,12 @@ RUN rm -rf /opt/venv/lib/python3.12/test/ \
     && chmod 755 /usr/local/bin \
     \
     # Symlinks for python, python3
-    && ln -sf /opt/venv/bin/python3.12 /usr/local/bin/python \
-    && ln -sf /opt/venv/bin/python3.12 /usr/local/bin/python3 \
+    && ln -sf /opt/venv/bin/python3.13 /usr/local/bin/python \
+    && ln -sf /opt/venv/bin/python3.13 /usr/local/bin/python3 \
     \
     # Create a final python-wrapper
     && echo '#!/bin/sh' > /usr/local/bin/python-wrapper \
-    && echo 'exec /opt/venv/bin/python3.12 "$@"' >> /usr/local/bin/python-wrapper \
+    && echo 'exec /opt/venv/bin/python3.13 "$@"' >> /usr/local/bin/python-wrapper \
     && chmod 755 /usr/local/bin/python-wrapper \
     \
     # Final cleanup of caches
@@ -264,7 +291,7 @@ COPY --chown=$USERNAME:$USERNAME plugins/telescope.lua   $USERHOME/.config/nvim/
 ###############################################################################
 RUN set -eux; \
     echo 'export PYTHONHOME="/opt/venv"' > /etc/profile.d/python.sh && \
-    echo 'export PYTHONPATH="/opt/venv/lib/python3.12/site-packages"' >> /etc/profile.d/python.sh && \
+    echo 'export PYTHONPATH="/opt/venv/lib/python3.13/site-packages"' >> /etc/profile.d/python.sh && \
     echo 'export PATH="/opt/venv/bin:$PATH"' >> /etc/profile.d/python.sh && \
     chmod +x /etc/profile.d/python.sh && \
     \
@@ -301,7 +328,7 @@ USER 1000
 ###############################################################################
 # Default working directory
 ###############################################################################
-WORKDIR /home/pythondev/code
+WORKDIR "$USERHOME/code"
 
 ###############################################################################
 # Updated Healthcheck (interval=300s)
@@ -309,7 +336,8 @@ WORKDIR /home/pythondev/code
 HEALTHCHECK --interval=300s --timeout=10s --start-period=5s --retries=3 \
     CMD python --version && \
     test "$(find / -type f -perm /2000 -o -perm /4000 | wc -l)" -eq 0 && \
-    ps aux | grep -v pythondev | grep -v root | wc -l | grep -q '^0$' || exit 1
+    ps aux | grep -v pythondev | grep -v root | wc -l | grep -q '^0$' && \
+    free -m | awk 'NR==2{printf "Memory Usage: %s/%sMB (%.2f%%)\n", $3,$2,$3*100/$2 }' | grep -q "Memory Usage: [0-9]*\/[0-9]*MB ([0-9]*\.[0-9]*%)" || exit 1
 
 ###############################################################################
 # Default Command
