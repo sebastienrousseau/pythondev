@@ -81,12 +81,12 @@ This is an opinionated development environment that reflects specific preference
 
 1. **Clone the repository:**
 
-   ```bash
-   git clone https://github.com/sebastienrousseau/pythondev.git
-   cd pythondev
-   ```
+```bash
+git clone <https://github.com/sebastienrousseau/pythondev.git>
+cd pythondev
+```
 
-2. **Configure the environment (optional):**
+1. **Configure the environment (optional):**
    Default values are provided, but you can customize in `.env`:
 
 ```bash
