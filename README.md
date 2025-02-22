@@ -1,17 +1,17 @@
 # PythonDev (pythondev)
 
 <!-- markdownlint-disable MD033 MD041 -->
-<img src="https://kura.pro/pythondev/images/logos/pythondev.webp"
+<img src="https://kura.pro/pythondev/images/logos/pythondev.svg"
 alt="PythonDev logo" height="66" align="right" />
 <!-- markdownlint-enable MD033 MD041 -->
 
-An opinionated, secure, Alpine-based Docker container providing a complete Python development environment with NeoVim configuration. Engineered for safety, efficiency, and developer productivity. **This is not an official Python project** and is not affiliated with or supported by the Python Software Foundation.
+An opinionated, secure, Alpine-based container providing a complete Python development environment with NeoVim configuration. Engineered for safety, efficiency, and developer productivity. **This is not an official Python project** and is not affiliated with or supported by the Python Software Foundation.
 
 <!-- markdownlint-disable MD033 MD041 -->
 <center>
 <!-- markdownlint-enable MD033 MD041 -->
 
-[![Made with Alpine Linux][alpine-badge]][08] [![Docker][docker-badge]][03] [![Python][python-badge]][01] [![NeoVim][neovim-badge]][04] [![Security][security-badge]][06] [![Build Status][build-badge]][07]
+[![Made with Alpine Linux][alpine-badge]][08] [![Container][container-badge]][03] [![Python][python-badge]][01] [![NeoVim][neovim-badge]][04] [![Security][security-badge]][06] [![Build Status][build-badge]][07]
 
 • [Features](#key-features) • [Prerequisites](#prerequisites) • [Installation](#installation) • [Configuration](#configuration) • [Security](#security)
 
@@ -26,7 +26,7 @@ This is an opinionated development environment that reflects specific preference
 - Not an official Python project
 - Not affiliated with or supported by the Python Software Foundation or its contributors
 - Not intended to be a one-size-fits-all solution
-- Maintained independently and based on [docker hub python][02] and other open-source projects
+- Maintained independently and based on open-source projects
 - Provided as-is with no warranties (see [License](#license))
 
 ## Overview
@@ -54,7 +54,7 @@ This is an opinionated development environment that reflects specific preference
   - System file immutability
 
 - **Python Development Tools**
-  - Python 3.12.0 built from source
+  - Python 3.13.2 built from source
   - UV package installer for faster dependency management
   - Virtual environment configuration
   - Optimized Python build
@@ -71,8 +71,7 @@ This is an opinionated development environment that reflects specific preference
 
 ## Prerequisites
 
-- Docker 24.0 or newer
-- Docker Compose V2
+- Docker 24.0+ or Podman 4.0+
 - Minimum 4GB RAM (8GB recommended)
 - At least 10GB free disk space
 - Git 2.40 or newer
@@ -90,29 +89,85 @@ This is an opinionated development environment that reflects specific preference
 2. **Configure the environment (optional):**
    Default values are provided, but you can customize in `.env`:
 
-   ```bash
-   LANG=en_US.UTF-8
-   NAME=pythondev-container
-   OS=alpine
-   SHELL=/bin/bash
-   TZ=UTC
-   VERSION=latest
-   PYTHON_VERSION=3.12.0
-   ```
+```bash
+LANG="C.UTF-8"
+NAME="PythonDev"
+OS="linux"
+PYTHON_VERSION="3.13.2"
+SHELL="/bin/bash"
+TZ="UTC"
+USER_HOME="/home/pythondev"
+USERNAME="pythondev"
+VERSION="0.0.1"
+```
 
 3. **Build and start the development environment:**
 
-   ```bash
-   docker-compose up --build -d
-   ```
+*Using Docker:*
+
+```bash
+# Build and start with Docker Compose
+docker-compose up --build -d
+
+# Or build and run manually
+docker build -t pythondev -f Dockerfile .
+docker run -it --name pythondev -v "$(pwd):/home/pythondev/code" pythondev
+```
+
+*Using Podman:*
+
+```bash
+# Build and start with Podman Compose
+podman-compose up --build -d
+
+# Build and start with Podman
+podman build -t pythondev -f Containerfile .
+podman run -it --name pythondev -v "$(pwd):/home/pythondev/code" pythondev
+```
 
 4. **Access the container:**
 
-   ```bash
-   docker exec -it pythondev bash
-   ```
+*Using Docker:*
+
+```bash
+# New shell in running container
+docker exec -it pythondev bash
+
+# Reattach to stopped container
+docker start -ai pythondev
+```
+
+*Using Podman:*
+
+```bash
+# New shell in running container
+podman exec -it pythondev bash
+
+# Reattach to stopped container
+podman start -ai pythondev
+```
 
 ## Configuration
+
+### Docker commands
+
+```bash
+docker ps                   # List running containers
+docker stop pythondev       # Stop the container
+docker start pythondev      # Start the container
+docker rm pythondev         # Remove the container
+docker volume ls            # List volumes
+```
+
+### Podman equivalent
+
+```bash
+podman ps                   # List running containers
+podman stop pythondev       # Stop the container
+podman start pythondev      # Start the container
+podman rm pythondev         # Remove the container
+podman volume ls            # List volumes
+```
 
 ### Environment Variables
 
@@ -122,7 +177,7 @@ The container uses pre-configured environment variables with sensible defaults:
 DOCKER_CONTENT_TRUST=1       # Enable Docker content trust
 SECCOMP_PROFILE=default      # Security computing mode profile
 PYTHONHOME=/opt/venv         # Python installation directory
-PYTHONPATH=/opt/venv/lib/python3.12/site-packages
+PYTHONPATH=/opt/venv/lib/python3.13/site-packages
 PYTHONDONTWRITEBYTECODE=1    # Prevent Python from writing pyc files
 PYTHONUNBUFFERED=1           # Prevent Python from buffering stdout/stderr
 ```
@@ -134,26 +189,108 @@ Example `docker-compose.yml`:
 ```yaml
 services:
   pythondev:
-    image: pythondev:latest
+    image: pythondev
     container_name: pythondev
+
     build:
       context: .
       args:
-        PYTHON_VERSION: "3.12.0"
+        PYTHON_VERSION: "${PYTHON_VERSION}"
+        USERNAME: "${USERNAME}"
+        USER_HOME: "${USER_HOME}"
+
     env_file:
       - .env
+
+    # Drop privileges to user 1000:1000 inside container
     user: "1000:1000"
+
+    # Default working directory inside the container
     working_dir: "/home/pythondev/code"
+
+    # Keep STDIN open and allocate a pseudo-TTY (handy for interactive dev)
     stdin_open: true
     tty: true
-    healthcheck:
-      test: ["CMD", "python", "--version"]
-      interval: 300s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
+
+    # Pass environment variables to the container at runtime
+    # referencing the same .env variables
+    environment:
+      - PATH=/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - PYTHONHOME=/opt/venv
+      - PYTHONPATH=/opt/venv/lib/python3.13/site-packages
+      - PYTHON_VERSION=${PYTHON_VERSION}
+      - USERNAME=${USERNAME}
+      - USER_HOME=${USER_HOME}
+
+    # Default command to run on container start
     command: ["/bin/bash", "--login"]
 ```
+
+### Podman Configuration
+
+Example `podman-compose.yml`:
+
+```yaml
+services:
+  pythondev:
+    image: pythondev
+    container_name: pythondev
+
+    build:
+      context: .
+      args:
+        PYTHON_VERSION: "${PYTHON_VERSION}"
+        USERNAME: "${USERNAME}"
+        USER_HOME: "${USER_HOME}"
+
+    env_file:
+      - .env
+
+    # Drop privileges to user 1000:1000 inside container
+    user: "1000:1000"
+
+    # Default working directory inside the container
+    working_dir: "/home/pythondev/code"
+
+    # Keep STDIN open and allocate a pseudo-TTY (handy for interactive dev)
+    stdin_open: true
+    tty: true
+
+    # Pass environment variables to the container at runtime
+    # referencing the same .env variables
+    environment:
+      - PATH=/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - PYTHONHOME=/opt/venv
+      - PYTHONPATH=/opt/venv/lib/python3.13/site-packages
+      - PYTHON_VERSION=${PYTHON_VERSION}
+      - USERNAME=${USERNAME}
+      - USER_HOME=${USER_HOME}
+
+    # Default command to run on container start
+    command: ["/bin/bash", "--login"]
+```
+
+## Development Workflow
+
+1. **Mount your code directory:**
+
+   ```bash
+   # Docker
+   docker run -it -v "$(pwd):/home/pythondev/code" pythondev
+
+   # Podman
+   podman run -it -v "$(pwd):/home/pythondev/code" pythondev
+   ```
+
+2. **For web development, expose ports:**
+
+   ```bash
+   # Docker
+   docker run -it -v "$(pwd):/home/pythondev/code" -p 8000:8000 pythondev
+
+   # Podman
+   podman run -it -v "$(pwd):/home/pythondev/code" -p 8000:8000 pythondev
+   ```
 
 ## Security
 
@@ -178,7 +315,7 @@ The container implements multiple layers of security:
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 [alpine-badge]: https://img.shields.io/badge/Alpine_Linux-0D597F?style=for-the-badge&logo=alpine-linux&logoColor=white
-[docker-badge]: https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white
+[container-badge]: https://img.shields.io/badge/Container-2496ED?style=for-the-badge&logo=docker&logoColor=white
 [python-badge]: https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white
 [neovim-badge]: https://img.shields.io/badge/NeoVim-57A143?style=for-the-badge&logo=neovim&logoColor=white
 [security-badge]: https://img.shields.io/badge/Security-Hardened-success?style=for-the-badge

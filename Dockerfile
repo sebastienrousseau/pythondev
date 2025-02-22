@@ -53,16 +53,16 @@ ENV ARCH=${ARCH} \
     SECCOMP_PROFILE="default" \
     SHELL=${SHELL} \
     TZ=${TZ} \
-    USERHOME="/home/pythondev" \
+    USER_HOME="/home/pythondev" \
     USERNAME="pythondev" \
     VERSION=${VERSION}
 
 ###############################################################################
 # Create the 'pythondev' user and home directory
 ###############################################################################
-RUN adduser -D -h "$USERHOME" -u 1000 "$USERNAME" \
-    && mkdir -p "$USERHOME/code" \
-    && chown -R "$USERNAME":"$USERNAME" "$USERHOME"
+RUN adduser -D -h "$USER_HOME" -u 1000 "$USERNAME" \
+    && mkdir -p "$USER_HOME/code" \
+    && chown -R "$USERNAME":"$USERNAME" "$USER_HOME"
 
 ###############################################################################
 # Install build dependencies, build Python from source, remove build deps
@@ -207,11 +207,11 @@ RUN apk add --no-cache audit && \
 ###############################################################################
 # Configure Neovim (LazyVim) and user .config
 ###############################################################################
-RUN git clone --depth 1 https://github.com/LazyVim/starter "$USERHOME/.config/nvim" && \
-    rm -rf "$USERHOME/.config/nvim/.git" && \
-    rm -f "$USERHOME/.config/nvim/lua/plugins/example.lua" && \
-    touch "$USERHOME/.config/nvim/lazy-lock.json" && \
-    chown -R "$USERNAME":"$USERNAME" "$USERHOME/.config"
+RUN git clone --depth 1 https://github.com/LazyVim/starter "$USER_HOME/.config/nvim" && \
+    rm -rf "$USER_HOME/.config/nvim/.git" && \
+    rm -f "$USER_HOME/.config/nvim/lua/plugins/example.lua" && \
+    touch "$USER_HOME/.config/nvim/lazy-lock.json" && \
+    chown -R "$USERNAME":"$USERNAME" "$USER_HOME/.config"
 
 ###############################################################################
 # Harden the Alpine distribution for security (dev environment)
@@ -278,13 +278,13 @@ COPY --chown=$USERNAME:$USERNAME \
     .bashrc \
     .env \
     .gitignore \
-    $USERHOME/
+    $USER_HOME/
 
-COPY --chown=$USERNAME:$USERNAME plugins/disabled.lua    $USERHOME/.config/nvim/lua/plugins/disabled.lua
-COPY --chown=$USERNAME:$USERNAME plugins/ui.lua          $USERHOME/.config/nvim/lua/plugins/ui.lua
-COPY --chown=$USERNAME:$USERNAME plugins/coding.lua      $USERHOME/.config/nvim/lua/plugins/coding.lua
-COPY --chown=$USERNAME:$USERNAME plugins/toggleterm.lua  $USERHOME/.config/nvim/lua/plugins/toggleterm.lua
-COPY --chown=$USERNAME:$USERNAME plugins/telescope.lua   $USERHOME/.config/nvim/lua/plugins/telescope.lua
+COPY --chown=$USERNAME:$USERNAME plugins/disabled.lua    $USER_HOME/.config/nvim/lua/plugins/disabled.lua
+COPY --chown=$USERNAME:$USERNAME plugins/ui.lua          $USER_HOME/.config/nvim/lua/plugins/ui.lua
+COPY --chown=$USERNAME:$USERNAME plugins/coding.lua      $USER_HOME/.config/nvim/lua/plugins/coding.lua
+COPY --chown=$USERNAME:$USERNAME plugins/toggleterm.lua  $USER_HOME/.config/nvim/lua/plugins/toggleterm.lua
+COPY --chown=$USERNAME:$USERNAME plugins/telescope.lua   $USER_HOME/.config/nvim/lua/plugins/telescope.lua
 
 ###############################################################################
 # Permanently set up the Python environment & PATH
@@ -297,23 +297,23 @@ RUN set -eux; \
     \
     # Add source commands to relevant profiles
     echo 'source /etc/profile.d/python.sh' >> /etc/profile && \
-    echo 'source /etc/profile.d/python.sh' >> "$USERHOME/.profile" && \
-    echo 'source /etc/profile.d/python.sh' >> "$USERHOME/.bash_profile" && \
-    echo 'source /etc/profile.d/python.sh' >> "$USERHOME/.bashrc" && \
-    echo '[ -f "$HOME/.bashrc" ] && source "$HOME/.bashrc"' >> "$USERHOME/.bash_profile" && \
+    echo 'source /etc/profile.d/python.sh' >> "$USER_HOME/.profile" && \
+    echo 'source /etc/profile.d/python.sh' >> "$USER_HOME/.bash_profile" && \
+    echo 'source /etc/profile.d/python.sh' >> "$USER_HOME/.bashrc" && \
+    echo '[ -f "$HOME/.bashrc" ] && source "$HOME/.bashrc"' >> "$USER_HOME/.bash_profile" && \
     \
     # Ensure correct ownership of user files
     chown "$USERNAME":"$USERNAME" \
-    "$USERHOME/.profile" \
-    "$USERHOME/.bash_profile" \
-    "$USERHOME/.bashrc"
+    "$USER_HOME/.profile" \
+    "$USER_HOME/.bash_profile" \
+    "$USER_HOME/.bashrc"
 
 ###############################################################################
 # Change 'pythondev' user's default shell to Bash and create code directory
 ###############################################################################
 RUN chsh -s /bin/bash "$USERNAME" && \
-    mkdir -p "$USERHOME/code" && \
-    chown -R "$USERNAME:$USERNAME" "$USERHOME/code"
+    mkdir -p "$USER_HOME/code" && \
+    chown -R "$USERNAME:$USERNAME" "$USER_HOME/code"
 
 ###############################################################################
 # Implement resource limits (may not fully apply in containers)
@@ -328,7 +328,7 @@ USER 1000
 ###############################################################################
 # Default working directory
 ###############################################################################
-WORKDIR "$USERHOME/code"
+WORKDIR "$USER_HOME/code"
 
 ###############################################################################
 # Updated Healthcheck (interval=300s)

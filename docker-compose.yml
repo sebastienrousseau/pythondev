@@ -1,5 +1,5 @@
 services:
-  python-app:
+  pythondev:
     image: pythondev
     container_name: pythondev
 

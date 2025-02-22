@@ -1,0 +1,33 @@
+services:
+  pythondev:
+    image: pythondev
+    container_name: pythondev
+
+    build:
+      context: .
+      args:
+        PYTHON_VERSION: "${PYTHON_VERSION}"
+        USERNAME: "${USERNAME}"
+        USER_HOME: "${USER_HOME}"
+
+    env_file:
+      - .env
+
+    user: "1000:1000"
+
+    working_dir: "/home/pythondev/code"
+
+    stdin_open: true
+    tty: true
+
+    environment:
+      PATH: "/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      PYTHONHOME: "/opt/venv"
+      PYTHONPATH: "/opt/venv/lib/python3.12/site-packages"
+      PYTHON_VERSION: "${PYTHON_VERSION}"
+      USERNAME: "${USERNAME}"
+      USER_HOME: "${USER_HOME}"
+
+    command:
+      - "/bin/bash"
+      - "--login"
