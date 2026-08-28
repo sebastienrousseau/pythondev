@@ -10,8 +10,17 @@ and throw away in seconds, on any machine with Docker or Podman
 (Linux, macOS, Windows/WSL2).
 
 It ships CPython 3.13, the [`uv`][uv] package manager, a hash-pinned dev
-toolchain (ruff, mypy, pytest & friends), and Neovim pre-wired with a
-Python LSP — all built as a hardened, non-root, read-only-rootfs image.
+toolchain (ruff, mypy, pytest & friends), and **your own dotfiles**
+(shell, tmux, Neovim) pre-wired with a Python LSP — all built as a
+hardened, non-root, read-only-rootfs image.
+
+The developer environment IS your chezmoi-managed dotfiles: at build time
+the image clones your dotfiles repo and runs `chezmoi apply`, so the
+container has your *real* bashrc, aliases, tmux config, and Neovim setup —
+**always the latest** by default (pin a tag/commit with the `DOTFILES_REF`
+build arg for reproducible builds). **tmux is loaded by default**: the
+entrypoint attaches to (or creates) a persistent `langdev` session for
+interactive shells (opt out with `LANGDEV_NO_TMUX=1`).
 
 ## What's inside
 
@@ -22,7 +31,7 @@ Python LSP — all built as a hardened, non-root, read-only-rootfs image.
 | uv | 0.12.7 | release binary, **sha256** verified (no `curl \| sh`) |
 | ruff / mypy / pytest / … | see `requirements.txt` | **hash-locked** `requirements.lock` |
 | basedpyright (LSP) | 1.39.10 | hash-locked; bundles node via `nodejs-wheel` |
-| Neovim + plugins | LazyVim starter (pinned commit) | `nvim/lazy-lock.json` |
+| Dev env (shell/tmux/Neovim) | your dotfiles | git ref via `DOTFILES_REF` (latest by default) |
 
 Alpine's `apk python3` tracks the 3.12 line (3.22/3.23) or 3.14 (3.24) and
 never 3.13, so CPython 3.13.15 — the current 3.13 maintenance release as of
@@ -56,10 +65,13 @@ Run `pyhelp` for the full alias list.
 
 ## Editor / LSP
 
-Neovim is LazyVim-based. Language servers are installed at **build time**
-into the baked venv and configured directly via `nvim-lspconfig` — **Mason
-is disabled on purpose**, so there are no first-launch downloads and the
-image stays reproducible and network-free at runtime:
+Neovim comes from **your dotfiles** (authoritative). pythondev adds exactly
+one spec — `nvim/plugins.local/lang.lua` — which is dropped into the
+dotfiles' nvim config at build time and auto-imported via its
+`plugins.local` convention. The plugin set is baked headless at build time,
+so there are no first-launch downloads and the image stays reproducible and
+network-free at runtime. Language servers are installed at **build time**
+into the baked venv and are on `PATH`:
 
 - **basedpyright** — type checking, completion, navigation.
 - **ruff** via its native server (`ruff server`) — linting + formatting.
@@ -68,10 +80,11 @@ image stays reproducible and network-free at runtime:
 ## Lifecycle
 
 - **Build:** multi-stage. A `toolchain` stage builds CPython + the venv and
-  installs `uv`; an `nvim-build` stage bakes the editor plugins; the tiny
-  `final` stage copies only runtime artifacts (interpreter, venv, `uv`,
-  shell fragment) onto the shared hardened base. No compilers or `-dev`
-  packages reach the final image.
+  installs `uv`; an `env-build` stage clones + `chezmoi apply`s your dotfiles
+  and bakes the Neovim plugin set headless; the tiny `final` stage copies
+  only runtime artifacts (interpreter, venv, `uv`, and the
+  `/etc/profile.d/python.sh` shell fragment) onto the shared hardened base.
+  No compilers or `-dev` packages reach the final image.
 - **Run:** `make up` / `docker compose up` / `podman compose up`. The only
   bind mount is your code at `/work`. Interactive by default.
 - **Trash:** `make trash`. The container is disposable; nothing you need
@@ -104,6 +117,9 @@ image stays reproducible and network-free at runtime:
   (regenerates the hashed `requirements.lock` with
   `uv pip compile --generate-hashes --python-version 3.13 --universal`).
 - **Base image digest:** `make bump-base` (or update `ALPINE_DIGEST`).
+- **Dotfiles:** latest by default; pin a tag/commit for reproducible builds
+  with `--build-arg DOTFILES_REF=<tag|commit>` (or `DOTFILES_REPO=<url>` to
+  point at a fork).
 - **Shared core:** `make sync-common` re-vendors `common/` from `langdev`.
 
 ## CI

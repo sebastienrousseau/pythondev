@@ -1,8 +1,10 @@
 -- pythondev — Python language wiring for Neovim.
 -- SPDX-License-Identifier: MIT
 --
--- LSP servers are installed at BUILD time into the baked venv and are on
--- PATH (Mason is disabled in common/nvim/plugins/disabled.lua):
+-- Dropped into the user's dotfiles' Neovim config at build time via its
+-- `plugins.local` convention (auto-imported). The LSP servers are installed
+-- at BUILD time into the baked venv and are on PATH, so no Mason auto-install
+-- is needed at runtime:
 --   * basedpyright  -> type checking, completion, navigation
 --   * ruff (server) -> linting + formatting via `ruff server`
 -- This intentionally does NOT use the deprecated `ruff-lsp`.

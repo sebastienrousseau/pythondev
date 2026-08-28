@@ -1,4 +1,6 @@
-# ~/.bashrc.d/python.sh — pythondev language fragment (sourced by ~/.bashrc)
+# /etc/profile.d/python.sh — pythondev language fragment (sourced by login
+# shells via /etc/profile). Kept OUT of the user's chezmoi dotfiles so those
+# stay pristine and langdev-agnostic.
 # SPDX-License-Identifier: MIT
 #
 # The image bakes a ready-to-use virtualenv at /opt/venv (CPython 3.13 plus
