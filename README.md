@@ -1,330 +1,126 @@
-# PythonDev (pythondev)
+<!-- SPDX-License-Identifier: MIT -->
 
-<!-- markdownlint-disable MD033 MD041 -->
-<img src="https://kura.pro/pythondev/images/logos/pythondev.svg"
-alt="PythonDev logo" height="66" align="right" />
-<!-- markdownlint-enable MD033 MD041 -->
+# pythondev — portable, disposable Python dev environment
 
-An opinionated, secure, Alpine-based container providing a complete Python development environment with NeoVim configuration. Engineered for safety, efficiency, and developer productivity. **This is not an official Python project** and is not affiliated with or supported by the Python Software Foundation.
+[![ci](https://github.com/sebastienrousseau/pythondev/actions/workflows/ci.yml/badge.svg)](https://github.com/sebastienrousseau/pythondev/actions/workflows/ci.yml)
 
-<!-- markdownlint-disable MD033 MD041 -->
-<center>
-<!-- markdownlint-enable MD033 MD041 -->
+`pythondev` is a member of the [`langdev`][langdev] suite: a complete,
+batteries-included **Python** toolchain inside a container you can spin up
+and throw away in seconds, on any machine with Docker or Podman
+(Linux, macOS, Windows/WSL2).
 
-[![Made with Alpine Linux][alpine-badge]][08] [![Container][container-badge]][03] [![Python][python-badge]][01] [![NeoVim][neovim-badge]][04] [![Security][security-badge]][06] [![Build Status][build-badge]][07]
+It ships CPython 3.13, the [`uv`][uv] package manager, a hash-pinned dev
+toolchain (ruff, mypy, pytest & friends), and Neovim pre-wired with a
+Python LSP — all built as a hardened, non-root, read-only-rootfs image.
 
-• [Features](#key-features) • [Prerequisites](#prerequisites) • [Installation](#installation) • [Configuration](#configuration) • [Security](#security)
+## What's inside
 
-<!-- markdownlint-disable MD033 MD041 -->
-</center>
-<!-- markdownlint-enable MD033 MD041 -->
+| Component | Version | How it's pinned |
+|---|---|---|
+| Base OS | Alpine 3.22 | image **digest** (`sha256:14358309…`) |
+| Python | **3.13.15** | built from source, **GPG + sha256** verified |
+| uv | 0.12.7 | release binary, **sha256** verified (no `curl \| sh`) |
+| ruff / mypy / pytest / … | see `requirements.txt` | **hash-locked** `requirements.lock` |
+| basedpyright (LSP) | 1.39.10 | hash-locked; bundles node via `nodejs-wheel` |
+| Neovim + plugins | LazyVim starter (pinned commit) | `nvim/lazy-lock.json` |
 
-## Disclaimer
+Alpine's `apk python3` tracks the 3.12 line (3.22/3.23) or 3.14 (3.24) and
+never 3.13, so CPython 3.13.15 — the current 3.13 maintenance release as of
+Aug 2026 — is built from source in a throwaway `toolchain` stage with both
+its SHA-256 and its OpenPGP signature (release-manager key
+`7169605F…`) verified before use.
 
-This is an opinionated development environment that reflects specific preferences for tooling, configuration, and workflow. It is:
+## Quick start
 
-- Not an official Python project
-- Not affiliated with or supported by the Python Software Foundation or its contributors
-- Not intended to be a one-size-fits-all solution
-- Maintained independently and based on open-source projects
-- Provided as-is with no warranties (see [License](#license))
-
-## Overview
-
-**PythonDev** is a containerized Python development environment that prioritizes security, performance, and developer convenience. Built on Alpine Linux 3.21.3 for a minimal footprint, it includes a pre-configured NeoVim setup with Python-specific tooling, intelligent code completion, and Git integration.
-
-## Key Features
-
-- **Security Standards**
-  - OCI container verification and trust
-  - Base image digest verification
-  - Content trust enforcement
-  - SECCOMP profile implementation
-  - Enhanced security labels
-  - Regular vulnerability scanning
-
-- **Secure by Design**
-  - Alpine Linux 3.21.3 base with minimal attack surface
-  - Non-root user operation (UID 1000)
-  - Comprehensive security hardening
-  - PAM security implementation
-  - Container isolation and resource limits
-  - Core dump protection
-  - SUID/SGID binary removal
-  - System file immutability
-
-- **Python Development Tools**
-  - Python 3.13.2 built from source
-  - UV package installer for faster dependency management
-  - Virtual environment configuration
-  - Optimized Python build
-  - Complete stdlib verification
-  - Path isolation and environment control
-
-- **Enhanced Development Experience**
-  - NeoVim with LazyVim configuration
-  - Intelligent code completion
-  - Syntax highlighting
-  - Git integration
-  - Terminal integration
-  - Fuzzy finding
-
-## Prerequisites
-
-- Docker 24.0+ or Podman 4.0+
-- Minimum 4GB RAM (8GB recommended)
-- At least 10GB free disk space
-- Git 2.40 or newer
-- Terminal with SSH support
-
-## Installation
-
-1. **Clone the repository:**
-
-```bash
-git clone <https://github.com/sebastienrousseau/pythondev.git>
-cd pythondev
+```sh
+make up            # build (if needed) + drop into an interactive dev shell
+make run CMD="pytest -q"   # one-shot command in a fresh container
+make trash         # remove the image + dangling build cache
 ```
 
-1. **Configure the environment (optional):**
-   Default values are provided, but you can customize in `.env`:
+`make` auto-detects **docker** or **podman** and adjusts mount flags
+(SELinux `:Z`, userns) accordingly. Your project is bind-mounted at `/work`.
 
-```bash
-LANG="C.UTF-8"
-NAME="PythonDev"
-OS="linux"
-PYTHON_VERSION="3.13.2"
-SHELL="/bin/bash"
-TZ="UTC"
-USER_HOME="/home/pythondev"
-USERNAME="pythondev"
-VERSION="0.0.1"
+Inside the container everything is on `PATH` (the baked venv is first):
+
+```sh
+python --version        # Python 3.13.15
+ruff check . && ruff format .
+mypy .
+pytest -q
+pip-audit               # dependency CVE scan
+nvim .                  # LSP: basedpyright + ruff server, no first-run downloads
 ```
 
-3. **Build and start the development environment:**
+Run `pyhelp` for the full alias list.
 
-*Using Docker:*
+## Editor / LSP
 
-```bash
-# Build and start with Docker Compose
-docker-compose up --build -d
+Neovim is LazyVim-based. Language servers are installed at **build time**
+into the baked venv and configured directly via `nvim-lspconfig` — **Mason
+is disabled on purpose**, so there are no first-launch downloads and the
+image stays reproducible and network-free at runtime:
 
-# Or build and run manually
-docker build -t pythondev -f Dockerfile .
-docker run -it --name pythondev -v "$(pwd):/home/pythondev/code" pythondev
-```
+- **basedpyright** — type checking, completion, navigation.
+- **ruff** via its native server (`ruff server`) — linting + formatting.
+  (The deprecated `ruff-lsp` is **not** used.)
 
-*Using Podman:*
+## Lifecycle
 
-```bash
-# Build and start with Podman Compose
-podman-compose up --build -d
+- **Build:** multi-stage. A `toolchain` stage builds CPython + the venv and
+  installs `uv`; an `nvim-build` stage bakes the editor plugins; the tiny
+  `final` stage copies only runtime artifacts (interpreter, venv, `uv`,
+  shell fragment) onto the shared hardened base. No compilers or `-dev`
+  packages reach the final image.
+- **Run:** `make up` / `docker compose up` / `podman compose up`. The only
+  bind mount is your code at `/work`. Interactive by default.
+- **Trash:** `make trash`. The container is disposable; nothing you need
+  lives outside your bind-mounted project directory.
 
-# Build and start with Podman
-podman build -t pythondev -f Containerfile .
-podman run -it --name pythondev -v "$(pwd):/home/pythondev/code" pythondev
-```
+## Security model
 
-4. **Access the container:**
+- Runs as non-root `dev` (UID/GID 1000); no `sudo`, no setuid binaries
+  (setuid/setgid bits are stripped at build).
+- `compose.yaml` / `make` enforce `cap_drop: [ALL]`,
+  `no-new-privileges:true`, `read_only: true` root filesystem (with tmpfs
+  for `/tmp`, `~/.cache`, `~/.local/state`), `pids_limit`, `mem_limit`.
+- Supply chain: base image pinned **by digest**; CPython **GPG + sha256**
+  verified; `uv` installed from a **checksum-verified** release binary (no
+  `curl | sh`); Python deps installed from a **hash-pinned lockfile** with
+  `uv pip install --require-hashes`.
+- **No `.env` is committed or `COPY`'d** into the image — secrets are
+  runtime-only via compose `env_file`. `.dockerignore` and `.gitignore`
+  both block `.env` from the build context and from git.
+- The healthcheck is a cheap `nvim --version` liveness probe — no
+  full-filesystem scans.
 
-*Using Docker:*
+> Vulnerability posture is enforced continuously by CI (Trivy, fail on
+> HIGH/CRITICAL) rather than asserted by a static label; see the CI badge
+> above for current status.
 
-```bash
-# New shell in running container
-docker exec -it pythondev bash
+## Reproducing / updating the pins
 
-# Reattach to stopped container
-docker start -ai pythondev
-```
+- **Python deps:** edit a pin in `requirements.txt`, then `make lock`
+  (regenerates the hashed `requirements.lock` with
+  `uv pip compile --generate-hashes --python-version 3.13 --universal`).
+- **Base image digest:** `make bump-base` (or update `ALPINE_DIGEST`).
+- **Shared core:** `make sync-common` re-vendors `common/` from `langdev`.
 
-*Using Podman:*
+## CI
 
-```bash
-# New shell in running container
-podman exec -it pythondev bash
+`.github/workflows/ci.yml` gates every change with **hadolint**
+(Containerfile lint), **shellcheck** (all `*.sh`), a container **build**,
+a **Trivy** scan (fails on HIGH/CRITICAL), and a **CycloneDX SBOM** upload.
 
-# Reattach to stopped container
-podman start -ai pythondev
-```
+## Portability
 
-## Configuration
-
-### Docker commands
-
-```bash
-docker ps                   # List running containers
-docker stop pythondev       # Stop the container
-docker start pythondev      # Start the container
-docker rm pythondev         # Remove the container
-docker volume ls            # List volumes
-```
-
-### Podman equivalent
-
-```bash
-podman ps                   # List running containers
-podman stop pythondev       # Stop the container
-podman start pythondev      # Start the container
-podman rm pythondev         # Remove the container
-podman volume ls            # List volumes
-```
-
-### Environment Variables
-
-The container uses pre-configured environment variables with sensible defaults:
-
-```bash
-DOCKER_CONTENT_TRUST=1       # Enable Docker content trust
-SECCOMP_PROFILE=default      # Security computing mode profile
-PYTHONHOME=/opt/venv         # Python installation directory
-PYTHONPATH=/opt/venv/lib/python3.13/site-packages
-PYTHONDONTWRITEBYTECODE=1    # Prevent Python from writing pyc files
-PYTHONUNBUFFERED=1           # Prevent Python from buffering stdout/stderr
-```
-
-### Docker Configuration
-
-Example `docker-compose.yml`:
-
-```yaml
-services:
-  pythondev:
-    image: pythondev
-    container_name: pythondev
-
-    build:
-      context: .
-      args:
-        PYTHON_VERSION: "${PYTHON_VERSION}"
-        USERNAME: "${USERNAME}"
-        USER_HOME: "${USER_HOME}"
-
-    env_file:
-      - .env
-
-    # Drop privileges to user 1000:1000 inside container
-    user: "1000:1000"
-
-    # Default working directory inside the container
-    working_dir: "/home/pythondev/code"
-
-    # Keep STDIN open and allocate a pseudo-TTY (handy for interactive dev)
-    stdin_open: true
-    tty: true
-
-    # Pass environment variables to the container at runtime
-    # referencing the same .env variables
-    environment:
-      - PATH=/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      - PYTHONHOME=/opt/venv
-      - PYTHONPATH=/opt/venv/lib/python3.13/site-packages
-      - PYTHON_VERSION=${PYTHON_VERSION}
-      - USERNAME=${USERNAME}
-      - USER_HOME=${USER_HOME}
-
-    # Default command to run on container start
-    command: ["/bin/bash", "--login"]
-```
-
-### Podman Configuration
-
-Example `podman-compose.yml`:
-
-```yaml
-services:
-  pythondev:
-    image: pythondev
-    container_name: pythondev
-
-    build:
-      context: .
-      args:
-        PYTHON_VERSION: "${PYTHON_VERSION}"
-        USERNAME: "${USERNAME}"
-        USER_HOME: "${USER_HOME}"
-
-    env_file:
-      - .env
-
-    # Drop privileges to user 1000:1000 inside container
-    user: "1000:1000"
-
-    # Default working directory inside the container
-    working_dir: "/home/pythondev/code"
-
-    # Keep STDIN open and allocate a pseudo-TTY (handy for interactive dev)
-    stdin_open: true
-    tty: true
-
-    # Pass environment variables to the container at runtime
-    # referencing the same .env variables
-    environment:
-      - PATH=/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      - PYTHONHOME=/opt/venv
-      - PYTHONPATH=/opt/venv/lib/python3.13/site-packages
-      - PYTHON_VERSION=${PYTHON_VERSION}
-      - USERNAME=${USERNAME}
-      - USER_HOME=${USER_HOME}
-
-    # Default command to run on container start
-    command: ["/bin/bash", "--login"]
-```
-
-## Development Workflow
-
-1. **Mount your code directory:**
-
-   ```bash
-   # Docker
-   docker run -it -v "$(pwd):/home/pythondev/code" pythondev
-
-   # Podman
-   podman run -it -v "$(pwd):/home/pythondev/code" pythondev
-   ```
-
-2. **For web development, expose ports:**
-
-   ```bash
-   # Docker
-   docker run -it -v "$(pwd):/home/pythondev/code" -p 8000:8000 pythondev
-
-   # Podman
-   podman run -it -v "$(pwd):/home/pythondev/code" -p 8000:8000 pythondev
-   ```
-
-## Security
-
-The container implements multiple layers of security:
-
-- Non-root user operation (UID 1000)
-- Minimal base image (Alpine 3.21.3)
-- Content trust verification
-- SECCOMP profile implementation
-- Resource limitations
-- Regular security updates
-- System hardening
-- Core dump protection
-- SUID/SGID removal
-- File system restrictions
-- Process isolation
-- User access control
-- Enhanced healthchecks
+One OCI `Containerfile` builds with `docker build`, `podman build`,
+`buildah`, and `nerdctl`; multi-arch (`linux/amd64`, `linux/arm64`) via
+`make buildx`. No host-path assumptions beyond the `/work` bind mount.
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+[MIT](LICENSE) — part of the [`langdev`][langdev] suite.
 
-[alpine-badge]: https://img.shields.io/badge/Alpine_Linux-0D597F?style=for-the-badge&logo=alpine-linux&logoColor=white
-[container-badge]: https://img.shields.io/badge/Container-2496ED?style=for-the-badge&logo=docker&logoColor=white
-[python-badge]: https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white
-[neovim-badge]: https://img.shields.io/badge/NeoVim-57A143?style=for-the-badge&logo=neovim&logoColor=white
-[security-badge]: https://img.shields.io/badge/Security-Hardened-success?style=for-the-badge
-[build-badge]: https://img.shields.io/badge/Build-Passing-success?style=for-the-badge
-
-[01]: https://www.python.org
-[02]: https://hub.docker.com/_/python
-[03]: https://www.docker.com
-[04]: https://neovim.io
-[06]: #security
-[07]: https://github.com/sebastienrousseau/pythondev/actions
-[08]: https://alpinelinux.org
+[langdev]: https://github.com/sebastienrousseau/langdev
+[uv]: https://github.com/astral-sh/uv

@@ -1,29 +1,38 @@
-# Core Development Tools
-bandit             # Security linting
-codespell          # Spell checking
-mypy               # Keep one type checker (more established than pyright)
-pyright            # TypeScript type checker for Python
-ruff               # Fast linter + formatter (replaces black/pylint/isort)
+# pythondev — developer toolchain (human-edited input).
+# SPDX-License-Identifier: MIT
+#
+# Exact-pinned direct dependencies. This is the SOURCE list; the hashed,
+# fully-resolved lockfile is `requirements.lock` (generated with
+# `uv pip compile requirements.txt --generate-hashes --python-version 3.13
+#  --universal`). The image installs from the LOCK with --require-hashes.
+# To bump: edit a pin here, then regenerate the lock (see Makefile / README).
 
-# Testing
-hypothesis         # Property-based testing
-pytest             # Core testing
-pytest-asyncio     # Async testing support
-pytest-cov         # Code coverage
-pytest-mock        # Essential mocking
-pytest-xdist       # Parallel test execution
-types-setuptools   # Type hints for setuptools
+# --- Language server + linting / formatting / typing ------------------------
+basedpyright==1.39.10     # Python LSP (bundles pyright via nodejs-wheel)
+ruff==0.16.5              # linter + formatter + built-in LSP (`ruff server`)
+mypy==2.3.1               # static type checker
 
-# Documentation
-mdformat
-mdformat-black
+# --- Testing ----------------------------------------------------------------
+pytest==9.1.1             # test runner
+pytest-asyncio==1.4.0     # async test support
+pytest-cov==7.1.0         # coverage integration
+pytest-mock==3.15.1       # mocker fixture
+pytest-xdist==3.8.0       # parallel test execution
+hypothesis==6.165.10      # property-based testing
 
-# Security & Monitoring
-pip-audit          # Security auditing
-structlog          # Structured logging
+# --- Security ---------------------------------------------------------------
+bandit==1.9.4             # security linter
+pip-audit==2.10.1         # dependency vulnerability audit
 
-# Essential Tools
-debugpy            # Debugging support
-pre-commit         # Git hooks
-rich               # Console output enhancements
-typer              # CLI building (pairs well with rich)
+# --- Spelling / docs --------------------------------------------------------
+codespell==2.4.3          # spell checker
+mdformat==1.0.0           # markdown formatter
+
+# --- Debugging / hooks / CLI UX ---------------------------------------------
+debugpy==1.8.21           # Debug Adapter Protocol server
+pre-commit==4.6.2         # git hook manager
+rich==15.0.0              # rich console output
+typer==0.27.2             # CLI framework
+
+# --- Type stubs -------------------------------------------------------------
+types-setuptools==84.0.0.20260812
