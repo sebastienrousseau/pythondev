@@ -1,5 +1,5 @@
 -- pythondev — Python language wiring for Neovim.
--- SPDX-License-Identifier: MIT
+-- SPDX-License-Identifier: Apache-2.0 OR MIT
 --
 -- Dropped into the user's dotfiles' Neovim config at build time via its
 -- `plugins.local` convention (auto-imported). The LSP servers are installed

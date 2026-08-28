@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.9
+# SPDX-License-Identifier: Apache-2.0 OR MIT
 # pythondev Containerfile — OCI, builds with Docker AND Podman.
-# SPDX-License-Identifier: MIT
 #
 # A <language>dev image on the langdev foundation: Python 3.13 + uv + a
 # hash-pinned dev toolchain (ruff, mypy, pytest, …) + Neovim wired for Python
@@ -172,7 +172,7 @@ ARG USERNAME USER_UID USER_GID
 
 LABEL org.opencontainers.image.title="pythondev" \
       org.opencontainers.image.description="Portable, hardened Python dev environment (langdev)" \
-      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.licenses="Apache-2.0 OR MIT" \
       org.opencontainers.image.vendor="Sebastien Rousseau"
 
 # Runtime deps: editor, multiplexer (tmux — available by default), and the
