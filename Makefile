@@ -78,12 +78,3 @@ scan: build ## Vulnerability-scan the built image (needs trivy)
 sbom: build ## Generate a CycloneDX SBOM (needs syft)
 	@command -v syft >/dev/null && syft $(REF) -o cyclonedx-json > sbom.cdx.json && echo "wrote sbom.cdx.json" || echo "syft not installed — skipping"
 
-.PHONY: lock
-lock: ## Regenerate the hash-pinned requirements.lock from requirements.txt (needs uv)
-	@command -v uv >/dev/null || { echo "uv not installed — see README"; exit 1; }
-	uv pip compile requirements.txt --generate-hashes \
-	  --python-version 3.13 --universal --output-file requirements.lock
-
-.PHONY: sync-common
-sync-common: ## Refresh common/ from the langdev source (LANGDEV=path-or-url)
-	@./bin/langdev-sync $(if $(LANGDEV),--source "$(LANGDEV)",)
