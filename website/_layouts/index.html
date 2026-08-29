@@ -13,22 +13,41 @@
       <a class="btn btn-secondary btn-lg" href="https://github.com/sebastienrousseau/{{name}}" target="_blank" rel="noopener">Star on GitHub</a>
     </div>
 
-    <!-- Realistic Animated Terminal IDE & MCP Session -->
-    <figure class="mcp-term">
-      <figcaption class="mcp-term-bar">
-        <span class="mcp-term-dot dot-red" aria-hidden="true"></span>
-        <span class="mcp-term-dot dot-yellow" aria-hidden="true"></span>
-        <span class="mcp-term-dot dot-green" aria-hidden="true"></span>
-        <span class="mcp-term-title">Terminal · {{name}} stdio &amp; TMUX IDE</span>
+    <!-- Authentic Code & Terminal IDE Preview -->
+    <figure class="terminal-preview-card">
+      <figcaption class="terminal-header">
+        <div class="window-dots">
+          <span class="dot dot-red" aria-hidden="true"></span>
+          <span class="dot dot-yellow" aria-hidden="true"></span>
+          <span class="dot dot-green" aria-hidden="true"></span>
+        </div>
+        <div class="terminal-tab-bar">
+          <span class="tab-item active-tab font-mono">src/agent/pipeline.py</span>
+          <span class="tab-item font-mono">terminal</span>
+        </div>
+        <div class="terminal-actions">
+          <span class="badge-status font-mono">● Python 3.12 + uv + ruff</span>
+        </div>
       </figcaption>
-      <pre class="mcp-term-body"><code><span class="mcp-tl mcp-tl-cmd mcp-tl-typed mcp-tl-t1"><span class="mcp-tl-ps" aria-hidden="true">$ </span>make up</span>
-<span class="mcp-tl mcp-tl-out mcp-tl-fade mcp-tl-f2">[OK] pythondev ready &lt; 500ms · uv, ruff, mypy, pytest active</span>
-<span class="mcp-tl mcp-tl-cmd mcp-tl-typed mcp-tl-t3"><span class="mcp-tl-ps" aria-hidden="true">$ </span>claude mcp add {{name}} -- docker exec -i {{name}} /usr/local/bin/mcp-server</span>
-<span class="mcp-tl mcp-tl-out mcp-tl-fade mcp-tl-f4">{{name}}-mcp · connected (stdio JSON-RPC 2.0)</span>
-<span class="mcp-tl mcp-tl-ask mcp-tl-typed mcp-tl-t5"><span class="mcp-tl-ps" aria-hidden="true">&gt; </span>Run mypy strict type check and pytest with debugpy.</span>
-<span class="mcp-tl mcp-tl-out mcp-tl-fade mcp-tl-f6">dispatched: uv run mypy . &amp;&amp; uv run pytest -v</span>
-<span class="mcp-tl mcp-tl-ok mcp-tl-fade mcp-tl-f7">✓ 48 passed, 0 failures, 100% type-checked in 0.38s</span>
-<span class="mcp-tl mcp-tl-caret" aria-hidden="true"></span></code></pre>
+      <div class="terminal-editor-pane">
+        <pre class="editor-code font-mono"><code><span class="code-comment"># src/agent/pipeline.py · Python 3.12+ Async Pipeline</span>
+<span class="code-kw">from</span> typing <span class="code-kw">import</span> <span class="code-type">AsyncIterator</span>
+<span class="code-kw">from</span> dataclasses <span class="code-kw">import</span> dataclass
+
+<span class="code-fn">@dataclass</span>(frozen=<span class="code-kw">True</span>, slots=<span class="code-kw">True</span>)
+<span class="code-kw">class</span> <span class="code-type">StreamResult</span>:
+    payload: <span class="code-type">bytes</span>
+    latency_ms: <span class="code-type">float</span>
+
+<span class="code-kw">async def</span> <span class="code-fn">transform</span>(stream: <span class="code-type">AsyncIterator</span>[<span class="code-type">str</span>]) -&gt; <span class="code-type">list</span>[<span class="code-type">StreamResult</span>]:
+    <span class="code-kw">return</span> [<span class="code-type">StreamResult</span>(s.<span class="code-fn">encode</span>(), <span class="code-num">0.12</span>) <span class="code-kw">async for</span> s <span class="code-kw">in</span> stream]</code></pre>
+      </div>
+      <div class="terminal-cli-pane font-mono">
+        <div class="cli-line"><span class="mcp-tl-ps">$ </span>uv run mypy --strict src/ &amp;&amp; uv run pytest -v</div>
+        <div class="cli-out">Success: no issues found in 18 source files · 48 passed in 0.14s</div>
+        <div class="cli-line"><span class="mcp-tl-ask">&gt; </span>Claude MCP: Format repository with ruff and verify type safety</div>
+        <div class="cli-out cli-ok">✓ 100% strict type safety · 0 ruff errors · debugpy port 5678 ready</div>
+      </div>
     </figure>
   </div>
 </section>
