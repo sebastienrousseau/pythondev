@@ -1,0 +1,16 @@
+site_name = "pythondev"
+site_title = "pythondev — Portable, Hardened Python 3.12+ AI Developer Container"
+site_description = "High-performance Python container preloaded with uv, ruff, mypy, pytest, debugpy, Pyright LSP, 4-pane TMUX IDE, and stdio Model Context Protocol (MCP) server."
+base_url = "https://sebastienrousseau.github.io/pythondev/"
+language = "en-GB"
+
+content_dir = "content"
+template_dir = "_layouts"
+output_dir = "public"
+
+[agents]
+agents_txt = true
+ai_plugin = true
+
+[agents.mcp]
+enabled = true
