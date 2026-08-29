@@ -1,12 +1,12 @@
 ---
 layout: index
-title: pythondev — Portable, Hardened Python 3.12+ AI Developer Container
-name: pythondev
-headline: Hardened Python 3.12+ Development Container for AI Agents
-lead: High-performance Python container preloaded with uv, ruff, mypy, pytest, debugpy, Pyright LSP, 4-pane TMUX IDE, and stdio Model Context Protocol (MCP) server.
-permalink: /
-language: en-GB
-date: 2026-08-29
+title: "pythondev — Portable, Hardened Python 3.12+ AI Developer Container"
+name: "pythondev"
+headline: "Hardened Python 3.12+ Development Container for AI Agents"
+lead: "High-performance Python container preloaded with uv, ruff, mypy, pytest, debugpy, Pyright LSP, 4-pane TMUX IDE, and stdio Model Context Protocol (MCP) server."
+permalink: "/"
+language: "en-GB"
+date: "2026-08-29"
 ---
 
 <section id="overview" class="section">
