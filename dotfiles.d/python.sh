@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # /etc/profile.d/python.sh — pythondev language fragment (sourced by login
 # shells via /etc/profile). Kept OUT of the user's chezmoi dotfiles so those
 # stay pristine and langdev-agnostic.
