@@ -142,7 +142,7 @@ make mosh</code></pre>
 <section id="faq" class="section">
   <div class="container narrow">
     <h2 class="section-title text-center">Frequently Asked Questions</h2>
-    <div class="stack" style="display:flex; flex-direction:column; gap:1.5rem; margin-top:2rem;">
+    <div class="faq-stack">
       <div class="card">
         <h3>What package manager is used?</h3>
         <p><code>uv</code> is pre-installed for ultra-fast package resolution and pip replacement.</p>
